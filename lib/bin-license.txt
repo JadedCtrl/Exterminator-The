@@ -2,9 +2,9 @@ Licensing information
 =====================
 
  KunKune!
- 	Website: https://git.feneas.org/detruota/KunKune!
- 	Website: https://github.com/jadedctrl/KunKune!
-	Website: https://xwx.moe
+ 	Website: https://notabug.org/jadedctrl/exterminator,the
+ 	Website: https://github.com/jadedctrl/exterminator,the
+	Website: https://xwx.moe/
  	License: Code, GPLv3
 		 Assets, varying (CC0 or CC-BY-SA 2.0; see website for details)
 
