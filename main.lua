@@ -18,7 +18,7 @@
 -- Style tip: Tabs == 4 spaces or death!
 class   = require "lib/middleclass"
 wind    = require "lib/windfield"
-stalker = require "lib/STALKER-X"
+cam11   = require "lib/cam11/cam11"
 
 
 CHATLOG = {}
@@ -52,7 +52,6 @@ function love.update(dt)
 --		newBgm()
 --	end
 	updateFunction(dt)
-	camera:update(dt)
 end
 
 
@@ -61,7 +60,6 @@ function love.draw()
 	drawFunction()
 	drawLogMsgs()
 	camera:detach()
-	camera:draw()
 end
 
 
@@ -180,18 +178,18 @@ function Exterminator:movement(dt)
 
 	if (not (self.ω == 0)) then
 	   self:rotate(dt)
-	   self.ω = 0
    end
 end
 
 function Exterminator:rotate(dt)
    local x0, y0 = self.body:getPosition()
-   local camX, camY = camera.toCameraCoords(x, y)
+   local camX, camY = camera:toScreen(x0, y0)
 
    self.θ = self.θ + self.ω*dt
-   camera.rotation = self.θ
+   camera:setAngle(self.θ)
+   camera:setDirty(true)
 
-   local x1, y1 = camera.toWorldCoords(camX, camY)
+   local x1, y1 = camera:toWorld(camX, camY)
    self.body:setPosition(x1, y1)
 end
 
@@ -215,9 +213,9 @@ function Exterminator:keypressed(key)
 		if (dir['up'] == 1) then dir['up'] = 2; end
 
 	elseif (key == self.keymap["deasil"]) then
-	   self.ω = .1
+	   self.ω = -.8
 	elseif (key == self.keymap["withershins"]) then
-	   self.ω = -.1
+	   self.ω = .8
 	end
 end
 
@@ -306,10 +304,10 @@ function Game:keypressed(key)
 
 	-- if a player presses the left key, then holds the right key, they should
 	-- go right until they let go, then they should go left.
-	if (key == "=" and camera.scale < 10) then
-		camera.scale = camera.scale + .5
-	elseif (key == "-" and camera.scale > .5) then
-		camera.scale = camera.scale - .5
+	if (key == "=" and camera:getZoom() < 10) then
+	   camera:setZoom(camera:getZoom() + .5)
+	elseif (key == "-" and camera:getZoom() > .5) then
+	   camera:setZoom(camera:getZoom() - .5)
 
 	elseif (key == "escape") then
 		menu_load(makeMainMenu())
@@ -484,10 +482,8 @@ function newCamera()
 	local scale =  height / 800
 	logMsg("[Camera]", "Scale: " .. scale)
 
-	camera = stalker()
-	camera.scale = scale
-	camera:setFollowStyle('NO_DEADZONE')
---	camera:follow(400, 400)
+	camera = cam11.new(250, 250)
+	camera:setZoom(scale)
 end
 
 

@@ -1,0 +1,3 @@
+[submodule "lib/cam11"]
+	path = lib/cam11
+	url = https://notabug.org/pgimeno/cam11
