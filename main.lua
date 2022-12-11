@@ -16,8 +16,8 @@
 --
 
 -- Style tip: Tabs == 4 spaces or death!
-class   = require "lib/middleclass"
-wind    = require "lib/windfield"
+class   = require "lib/middleclass/middleclass"
+wind    = require "lib/windfield/windfield"
 cam11   = require "lib/cam11/cam11"
 
 

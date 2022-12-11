@@ -1,3 +1,9 @@
 [submodule "lib/cam11"]
 	path = lib/cam11
 	url = https://notabug.org/pgimeno/cam11
+[submodule "lib/middleclass"]
+	path = lib/middleclass
+	url = https://github.com/kikito/middleclass
+[submodule "lib/windfield"]
+	path = lib/windfield
+	url = https://github.com/a327ex/windfield
