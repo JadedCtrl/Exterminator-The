@@ -1,7 +1,24 @@
--- pls set tabs to width of 4 spaces
-class	= require "lib/middleclass"
-wind	= require "lib/windfield"
-stalker	= require "lib/STALKER-X"
+--
+-- Copyright 2022, Jaidyn Levesque <jadedctrl@posteo.at>
+--
+-- This program is free software: you can redistribute it and/or
+-- modify it under the terms of the GNU General Public License as
+-- published by the Free Software Foundation, either version 3 of
+-- the License, or (at your option) any later version.
+--
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with this program. If not, see <https://www.gnu.org/licenses/>.
+--
+
+-- Style tip: Tabs == 4 spaces or death!
+class   = require "lib/middleclass"
+wind    = require "lib/windfield"
+stalker = require "lib/STALKER-X"
 
 
 CHATLOG = {}
@@ -15,7 +32,7 @@ function love.load()
 	math.randomseed(os.time())
 
 	bgm = nil
-	newBgm()
+--	newBgm()
 
 	logMsg(nil, "Starting up...")
 	love.graphics.setDefaultFilter("nearest", "nearest")
@@ -31,9 +48,9 @@ end
 
 
 function love.update(dt)
-	if (bgm.isPlaying == false) then
-		newBgm()
-	end
+--	if (bgm.isPlaying == false) then
+--		newBgm()
+--	end
 	updateFunction(dt)
 	camera:update(dt)
 end
@@ -100,17 +117,18 @@ function Exterminator:initialize(game, keymap)
 	self.character = math.random(1, table.maxn(CHARACTERS))
 	self.lives = 5
 	self.keymap = keymap
+	self.θ, self.ω = 0, 0
 
 	self.directionals = {}
 
-	self:initBody(50, 50)
+	self:initBody(200, 200)
 end
 
 
 function Exterminator:update(dt)
 	local dir = self.directionals
 
-	self:movement()
+	self:movement(dt)
 
 	if (self.body:getX() < 0) then
 		self.body:setX(800)
@@ -141,45 +159,41 @@ function Exterminator:initBody(x, y)
 	self.body = self.game.world:newRectangleCollider(x, y, 16, 16);
 	self.body:setCollisionClass('Exterminator')
 	self.body:setObject(self)
-	self.body:setAngularDamping(2)
-	self.body:setLinearDamping(.5)
-	self.body:setPostSolve(self.makePostSolve())
+--	self.body:setAngularDamping(2)
+--	self.body:setLinearDamping(.5)
+--	self.body:setPreSolve(self.makePreSolve())
 end
 
 
-function Exterminator:makePostSolve()
-	return function(col1, col2, contact)
-		if (col1.collision_class == "Exterminator"
-			and col2.collision_class == "Sword")
-		then
---			col1.object.game:sendChat(self.name .. " lost a life! " .. self.lives .. " left!")
---			print(col2.shape)
---			print("THEY DEEED, dude")
-		end
-	end
+function Exterminator:makePreSolve()
+   return function(col1, col2, contact)
+	  if (col1.collision_class == 'Exterminator' and col2.collision_class == 'Arena') then
+		 contact:setEnabled(false)
+	  end
+   end
 end
 
 
-function Exterminator:movement()
+function Exterminator:movement(dt)
 	local x, y = self.body:getPosition()
 	local dir = self.directionals
-	local angle = self.body:getAngle()
 
-	if (dir['left'] == 1) then
-		self.body:applyAngularImpulse(-.5, 1)
-	elseif (dir['right'] == 1) then
-		self.body:applyAngularImpulse(.5, 1)
-	end
-
-	if (dir['up'] == 1) then
-   		self.body:applyLinearImpulse(math.sin(angle) * 0.5, math.cos(angle) * -0.5)
-	elseif (dir['down'] == 1) then
-		self.body:setAngle(angle - (math.pi * .70))
-		self.body:applyAngularImpulse(-45, 1)
-		dir['down'] = 0
-	end
+	if (not (self.ω == 0)) then
+	   self:rotate(dt)
+	   self.ω = 0
+   end
 end
 
+function Exterminator:rotate(dt)
+   local x0, y0 = self.body:getPosition()
+   local camX, camY = camera.toCameraCoords(x, y)
+
+   self.θ = self.θ + self.ω*dt
+   camera.rotation = self.θ
+
+   local x1, y1 = camera.toWorldCoords(camX, camY)
+   self.body:setPosition(x1, y1)
+end
 
 function Exterminator:keypressed(key)
 	local dir = self.directionals
@@ -199,6 +213,11 @@ function Exterminator:keypressed(key)
 	elseif (key == self.keymap["down"]) then
 		dir['down'] = 1
 		if (dir['up'] == 1) then dir['up'] = 2; end
+
+	elseif (key == self.keymap["deasil"]) then
+	   self.ω = .1
+	elseif (key == self.keymap["withershins"]) then
+	   self.ω = -.1
 	end
 end
 
@@ -217,6 +236,9 @@ function Exterminator:keyreleased(key)
 
 	elseif (key == self.keymap["down"]) then
 		dir['down'] = 0
+
+	elseif (key == self.keymap["deasil"] or key == self.keymap["withershins"]) then
+	   self.ω = 0
 	end
 end
 
@@ -226,8 +248,28 @@ end
 Game = class("Game")
 
 function Game:initialize()
-	self.world = wind.newWorld(0, 0, true)
+	self.world = wind.newWorld(0, 100, true)
 	self.world:addCollisionClass('Exterminator')
+	self.world:addCollisionClass('Arena')
+	self.arena_borders = {}
+
+	local arena_length = 500
+	local side_length = arena_length * (2 * math.cos(.25 * math.pi) + 1)^-1
+	local corner_length = (arena_length - side_length) / 2
+
+	self.arena_borders[1] = self.world:newLineCollider(corner_length,0,  0,corner_length)
+	self.arena_borders[2] = self.world:newLineCollider(0,corner_length,  0,arena_length - corner_length)
+	self.arena_borders[3] = self.world:newLineCollider(0,arena_length-corner_length,  corner_length,arena_length)
+	self.arena_borders[4] = self.world:newLineCollider(corner_length,arena_length,  arena_length - corner_length,arena_length)
+	self.arena_borders[5] = self.world:newLineCollider(arena_length - corner_length,arena_length,  arena_length,arena_length - corner_length)
+	self.arena_borders[6] = self.world:newLineCollider(arena_length,arena_length - corner_length,  arena_length,corner_length)
+	self.arena_borders[7] = self.world:newLineCollider(arena_length,corner_length,  arena_length - corner_length,0)
+	self.arena_borders[8] = self.world:newLineCollider(arena_length - corner_length,0,  corner_length,0)
+	for k,border in pairs(self.arena_borders) do
+	   border:setCollisionClass('Arena')
+	   border:setType('static')
+	end
+
 	self.player = Exterminator:new(self, KEYMAPS[1])
 	self.entities = { self.player }
 end
@@ -243,15 +285,16 @@ end
 
 
 function Game:update(dt)
-	self.world:update(dt)
-	for k,entity in pairs(self.entities) do
-		entity:update(dt)
-	end
+   -- Update all game objects.
+   self.world:update(dt)
+   for k,entity in pairs(self.entities) do
+	  entity:update(dt)
+   end
 end
 
 
 function Game:draw()
---	self.world:draw()
+	self.world:draw()
    for k,entity in pairs(self.entities) do
 		entity:draw(dt)
 	end
@@ -366,62 +409,6 @@ function Menu:keyreleased(key)
 end
 
 
--- TEXT ENTRY
-----------------------------------------
-TextBox = class("TextBox")
-
-function TextBox:initialize(x, y, scale, max, initialText, label, onEnter)
-	self.x,self.y = x,y
-	self.scale = scale
-	self.onEnter = onEnter
-	self.text = initialText or ""
-	self.label = label or ""
-	self.max = max or 999
-
-	self.ttf = r_ttf
-end
-
-
-function TextBox:install(update, draw, press, release)
-	hookInstall(function (dt) self:update(dt) end,
-		function () self:draw() end,
-		function (key) self:keypressed(key) end,
-		function (key) self:keyreleased(key) end,
-		update, draw, press, release)
-end
-
-
-function TextBox:update()
-end
-
-
-function TextBox:draw()
-	love.graphics.draw(love.graphics.newText(self.ttf,
-		self.label .. self.text .. "_"),
-		self.x, self.y, 0, self.scale, self.scale)
-end
-
-
-function TextBox:keypressed(key)
-	if (key == "return") then
-		self.onEnter(self.text)
-
-	elseif (key == "backspace") then
-		self.text = self.text:sub(1, string.len(self.text) - 1)
-	elseif (string.len(self.text) > self.max) then
-		return
-	elseif (key == "space") then
-		self.text = self.text .. " "
-	elseif (string.len(key) == 1) then
-		self.text = self.text .. key
-	end
-end
-
-
-function TextBox:keyreleased(key)
-end
-
-
 -- CHAT/LOGGING
 --------------------------------------------------------------------------------
 function logMsg(source, text)
@@ -500,7 +487,7 @@ function newCamera()
 	camera = stalker()
 	camera.scale = scale
 	camera:setFollowStyle('NO_DEADZONE')
-	camera:follow(400, 400)
+--	camera:follow(400, 400)
 end
 
 
