@@ -22,6 +22,8 @@ cam11   = require "lib/cam11/cam11"
 
 
 CHATLOG = {}
+GRAVITY = 120
+ARENA_LENGTH = 500
 
 
 -- GAME STATES
@@ -176,9 +178,20 @@ function Exterminator:movement(dt)
 	local x, y = self.body:getPosition()
 	local dir = self.directionals
 
+	if (dir['withershins'] == 1) then
+	   self.ω  = -1.5
+	elseif (dir['deasil'] == 1) then
+	   self.ω = 1.5
+	else
+	   self.ω = 0
+	end
+
 	if (not (self.ω == 0)) then
+	   self.body:setType('static')
 	   self:rotate(dt)
-   end
+	else
+	   self.body:setType('dynamic')
+	end
 end
 
 function Exterminator:rotate(dt)
@@ -187,7 +200,6 @@ function Exterminator:rotate(dt)
 
    self.θ = self.θ + self.ω*dt
    camera:setAngle(self.θ)
-   camera:setDirty(true)
 
    local x1, y1 = camera:toWorld(camX, camY)
    self.body:setPosition(x1, y1)
@@ -196,26 +208,15 @@ end
 function Exterminator:keypressed(key)
 	local dir = self.directionals
 
-	if (key == self.keymap["right"]) then
-		dir['right'] = 1
-		if (dir['left'] == 1) then dir['left'] = 2; end
-
-	elseif (key == self.keymap["left"]) then
-		dir['left'] = 1
-		if (dir['right'] == 1) then dir['right'] = 2; end
-
-	elseif (key == self.keymap["up"]) then
-		dir['up'] = 1
-		if (dir['down'] == 1) then dir['down'] = 2; end
-
-	elseif (key == self.keymap["down"]) then
-		dir['down'] = 1
-		if (dir['up'] == 1) then dir['up'] = 2; end
+	if (key == self.keymap["gravity"]) then
+	   self.game:shiftGravity()
 
 	elseif (key == self.keymap["deasil"]) then
-	   self.ω = -.8
+	   dir['deasil'] = 1
+	   if (dir['withershins'] == 1) then dir['withershins'] = 2; end
 	elseif (key == self.keymap["withershins"]) then
-	   self.ω = .8
+	   dir['withershins'] = 1
+	   if (dir['deasil'] == 1) then dir['deasil'] = 2; end
 	end
 end
 
@@ -235,8 +236,13 @@ function Exterminator:keyreleased(key)
 	elseif (key == self.keymap["down"]) then
 		dir['down'] = 0
 
-	elseif (key == self.keymap["deasil"] or key == self.keymap["withershins"]) then
-	   self.ω = 0
+	elseif (key == self.keymap["deasil"]) then
+	   dir['deasil'] = 0
+	   if (dir['withershins'] == 2) then dir['withershins'] = 1; end
+
+	elseif (key == self.keymap["withershins"]) then
+	   dir['withershins'] = 0
+	   if (dir['deasil'] == 2) then dir['deasil'] = 1; end
 	end
 end
 
@@ -251,7 +257,7 @@ function Game:initialize()
 	self.world:addCollisionClass('Arena')
 	self.arena_borders = {}
 
-	local arena_length = 500
+	local arena_length = ARENA_LENGTH
 	local side_length = arena_length * (2 * math.cos(.25 * math.pi) + 1)^-1
 	local corner_length = (arena_length - side_length) / 2
 
@@ -287,6 +293,16 @@ function Game:update(dt)
    self.world:update(dt)
    for k,entity in pairs(self.entities) do
 	  entity:update(dt)
+   end
+end
+
+
+function Game:shiftGravity()
+   local exgravity_x, exgravity_y = self.world.box2d_world:getGravity()
+   if (exgravity_y == -GRAVITY) then
+	  self.world:setGravity(0, GRAVITY)
+   else
+	  self.world:setGravity(0, -GRAVITY)
    end
 end
 
@@ -519,7 +535,7 @@ MUSIC[5] = "art/music/Pamgaea.ogg"
 -- LOCAL KEYMAPS
 ------------------------------------------
 KEYMAPS = {}
-KEYMAPS[1] = {["up"] = "up", ["down"] = "down", ["left"] = "left", ["right"] = "right", ["withershins"] = "kp1", ["deasil"] = "kp2"}
-KEYMAPS[2] = {["up"] = "w", ["down"] = "s", ["left"] = "a", ["right"] = "d", ["withershins"] = "q", ["deasil"] = "e"}
-KEYMAPS[3] = {["up"] = "z", ["down"] = "s", ["left"] = "q", ["right"] = "d", ["withershins"] = "a", ["deasil"] = "e"}
+KEYMAPS[1] = {["gravity"] = "down", ["withershins"] = "left", ["deasil"] = "right"}
+KEYMAPS[2] = {["graviy"] = "w", ["withershins"] = "q", ["deasil"] = "e"}
+KEYMAPS[3] = {["gravity"] = "z", ["withershins"] = "a", ["deasil"] = "e"}
 
