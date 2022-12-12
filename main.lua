@@ -19,6 +19,7 @@
 class   = require "lib/middleclass/middleclass"
 wind    = require "lib/windfield/windfield"
 cam11   = require "lib/cam11/cam11"
+require "lib/love-animation/animation"
 
 
 CHATLOG = {}
@@ -108,13 +109,38 @@ end
 
 -- CLASSES
 --------------------------------------------------------------------------------
+-- BEING		base class for living things (I wanted to avoid "entity" :P)
+Being = class('Being')
+
+function Being:initialize()
+   self.animation = nil -- LuaAnimation animationTable of Love images
+   self.imageState = '' -- Table of images
+   self.body = nil -- The Windfield collider
+end
+
+
+function Being:update(dt)
+   local x,y = self.body:getWorldPoints(self.body.shape:getPoints())
+   self.animation:setPosition(x, y)
+   self.animation:setRotation(self.body:getAngle())
+
+   self.animation:update(dt)
+end
+
+
+function Being:draw()
+   self.animation:draw()
+end
+
+
+--------------------------------------------------------------------------------
 -- Exterminator		player class
 ----------------------------------------
-Exterminator = class('Exterminator')
+Exterminator = class('Exterminator', Being)
 
 function Exterminator:initialize(game, keymap)
 	self.game = game
-	self.character = math.random(1, table.maxn(CHARACTERS))
+	self.animation = LoveAnimation.new('art/images/knight.lua')
 	self.lives = 5
 	self.keymap = keymap
 	self.θ, self.ω = 0, 0
@@ -143,14 +169,8 @@ function Exterminator:update(dt)
 
 	if (dir['left'] == 2 and dir['right'] == 0) then dir['left'] = 1; end
 	if (dir['right'] == 2 and dir['left'] == 0) then dir['right'] = 1; end
-end
 
-
-function Exterminator:draw()
-	local x,y = self.body:getWorldPoints(self.body.shape:getPoints())
-
-	love.graphics.draw(CHARACTERS[self.character], x, y, self.body:getAngle(),
-		1, 1)
+	Being.update(self, dt)
 end
 
 
@@ -209,6 +229,9 @@ function Exterminator:rotate(dt)
 
    local x1, y1 = camera:toWorld(camX, camY)
    self.body:setPosition(x1, y1)
+
+   local θ = -self.θ
+   self.body:setAngle(θ)
 end
 
 function Exterminator:keypressed(key)
@@ -520,17 +543,6 @@ end
 
 -- MISC DATA
 --------------------------------------------------------------------------------
--- CHARACTERS
-------------------------------------------
-CHARACTERS = {}
--- Lion Jellyfish by rapidpunches, CC-BY-SA 4.0
-CHARACTERS[1] = love.graphics.newImage("art/sprites/jellyfish-lion.png")
--- N Jellyfish by rapidpunches, CC-BY-SA 4.0
-CHARACTERS[2] = love.graphics.newImage("art/sprites/jellyfish-n.png")
--- Octopus by rapidpunches, CC-BY-SA 4.0
-CHARACTERS[3] = love.graphics.newImage("art/sprites/octopus.png")
--- Something Indecipherable by my little brother (<3<3), CC-BY-SA 4.0
---CHARACTERS[4] = love.graphics.newImage("art/sprites/shark-unicorn.png")
 
 -- MUSIC
 ------------------------------------------

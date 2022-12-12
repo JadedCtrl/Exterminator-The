@@ -7,3 +7,6 @@
 [submodule "lib/windfield"]
 	path = lib/windfield
 	url = https://github.com/a327ex/windfield
+[submodule "lib/love-animation"]
+	path = lib/love-animation
+	url = https://github.com/patrixr/love-animation
