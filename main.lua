@@ -22,7 +22,7 @@ cam11   = require "lib/cam11/cam11"
 
 
 CHATLOG = {}
-GRAVITY = 120
+GRAVITY = 100
 ARENA_LENGTH = 500
 
 
@@ -60,8 +60,8 @@ end
 function love.draw()
 	camera:attach()
 	drawFunction()
-	drawLogMsgs()
 	camera:detach()
+	drawLogMsgs()
 end
 
 
@@ -131,15 +131,14 @@ function Exterminator:update(dt)
 	self:movement(dt)
 
 	if (self.body:getX() < 0) then
-		self.body:setX(800)
-	elseif (self.body:getX() > 800) then
-		self.body:setX(0)
+		self.body:setX(1)
+	elseif (self.body:getX() > 500) then
+		self.body:setX(499)
 	end
-
 	if (self.body:getY() < 0) then
-		self.body:setY(800)
-	elseif (self.body:getY() > 800) then
-		self.body:setY(0)
+		self.body:setY(1)
+	elseif (self.body:getY() > 500) then
+		self.body:setY(499)
 	end
 
 	if (dir['left'] == 2 and dir['right'] == 0) then dir['left'] = 1; end
@@ -182,7 +181,8 @@ function Exterminator:movement(dt)
 	   self.ω  = -1.5
 	elseif (dir['deasil'] == 1) then
 	   self.ω = 1.5
-	else
+	elseif (math.abs(self.ω) > 0) then
+	   self.game:rotate(self.θ)
 	   self.ω = 0
 	end
 
@@ -201,6 +201,12 @@ function Exterminator:rotate(dt)
    self.θ = self.θ + self.ω*dt
    camera:setAngle(self.θ)
 
+   if (self.θ > 2*math.pi) then
+	  self.θ = self.θ - 2*math.pi
+   elseif (self.θ < 0) then
+	  self.θ = self.θ + 2*math.pi
+   end
+
    local x1, y1 = camera:toWorld(camX, camY)
    self.body:setPosition(x1, y1)
 end
@@ -209,7 +215,7 @@ function Exterminator:keypressed(key)
 	local dir = self.directionals
 
 	if (key == self.keymap["gravity"]) then
-	   self.game:shiftGravity()
+	   self.game:invertGravity()
 
 	elseif (key == self.keymap["deasil"]) then
 	   dir['deasil'] = 1
@@ -222,21 +228,9 @@ end
 
 
 function Exterminator:keyreleased(key)
-	local dir = self.directionals
+   local dir = self.directionals
 
-	if (key == self.keymap["right"]) then
-		dir['right'] = 0
-
-	elseif (key == self.keymap["left"]) then
-		dir['left'] = 0
-
-	elseif (key == self.keymap["up"]) then
-		dir['up'] = 0
-
-	elseif (key == self.keymap["down"]) then
-		dir['down'] = 0
-
-	elseif (key == self.keymap["deasil"]) then
+	if (key == self.keymap["deasil"]) then
 	   dir['deasil'] = 0
 	   if (dir['withershins'] == 2) then dir['withershins'] = 1; end
 
@@ -256,26 +250,30 @@ function Game:initialize()
 	self.world:addCollisionClass('Exterminator')
 	self.world:addCollisionClass('Arena')
 	self.arena_borders = {}
+	self.gravityMultiplier = -1
+	self:initArena()
 
-	local arena_length = ARENA_LENGTH
-	local side_length = arena_length * (2 * math.cos(.25 * math.pi) + 1)^-1
-	local corner_length = (arena_length - side_length) / 2
+	self.player = Exterminator:new(self, KEYMAPS[1])
+	self.entities = { self.player }
+end
+
+
+function Game:initArena()
+	local side_length = ARENA_LENGTH * (2 * math.cos(.25 * math.pi) + 1)^-1
+	local corner_length = (ARENA_LENGTH - side_length) / 2
 
 	self.arena_borders[1] = self.world:newLineCollider(corner_length,0,  0,corner_length)
-	self.arena_borders[2] = self.world:newLineCollider(0,corner_length,  0,arena_length - corner_length)
-	self.arena_borders[3] = self.world:newLineCollider(0,arena_length-corner_length,  corner_length,arena_length)
-	self.arena_borders[4] = self.world:newLineCollider(corner_length,arena_length,  arena_length - corner_length,arena_length)
-	self.arena_borders[5] = self.world:newLineCollider(arena_length - corner_length,arena_length,  arena_length,arena_length - corner_length)
-	self.arena_borders[6] = self.world:newLineCollider(arena_length,arena_length - corner_length,  arena_length,corner_length)
-	self.arena_borders[7] = self.world:newLineCollider(arena_length,corner_length,  arena_length - corner_length,0)
-	self.arena_borders[8] = self.world:newLineCollider(arena_length - corner_length,0,  corner_length,0)
+	self.arena_borders[2] = self.world:newLineCollider(0,corner_length,  0,ARENA_LENGTH - corner_length)
+	self.arena_borders[3] = self.world:newLineCollider(0,ARENA_LENGTH-corner_length,  corner_length,ARENA_LENGTH)
+	self.arena_borders[4] = self.world:newLineCollider(corner_length,ARENA_LENGTH,  ARENA_LENGTH - corner_length,ARENA_LENGTH)
+	self.arena_borders[5] = self.world:newLineCollider(ARENA_LENGTH - corner_length,ARENA_LENGTH,  ARENA_LENGTH,ARENA_LENGTH - corner_length)
+	self.arena_borders[6] = self.world:newLineCollider(ARENA_LENGTH,ARENA_LENGTH - corner_length,  ARENA_LENGTH,corner_length)
+	self.arena_borders[7] = self.world:newLineCollider(ARENA_LENGTH,corner_length,  ARENA_LENGTH - corner_length,0)
+	self.arena_borders[8] = self.world:newLineCollider(ARENA_LENGTH - corner_length,0,  corner_length,0)
 	for k,border in pairs(self.arena_borders) do
 	   border:setCollisionClass('Arena')
 	   border:setType('static')
 	end
-
-	self.player = Exterminator:new(self, KEYMAPS[1])
-	self.entities = { self.player }
 end
 
 
@@ -297,13 +295,24 @@ function Game:update(dt)
 end
 
 
-function Game:shiftGravity()
+function Game:invertGravity()
+   self.gravityMultiplier = -self.gravityMultiplier
+
    local exgravity_x, exgravity_y = self.world.box2d_world:getGravity()
-   if (exgravity_y == -GRAVITY) then
-	  self.world:setGravity(0, GRAVITY)
-   else
-	  self.world:setGravity(0, -GRAVITY)
-   end
+   self.world:setGravity(-exgravity_x, -exgravity_y)
+end
+
+
+function Game:rotate(θ)
+   -- Reduced from -(θ - 2π) - ½π
+   -- `(θ - 2π)` to invert y-axis from Love's orientation to the expected (?)
+   -- `- ½π` for the downward angle?
+   -- Heck idk, I just know I _finally_ got this working >w<
+   local θ = -θ + ((3/2)*math.pi)
+
+   local multiplier = self.gravityMultiplier * GRAVITY
+   self.world:setGravity(multiplier * math.cos(θ),
+						 multiplier * math.sin(θ))
 end
 
 
@@ -311,7 +320,7 @@ function Game:draw()
 	self.world:draw()
    for k,entity in pairs(self.entities) do
 		entity:draw(dt)
-	end
+   end
 end
 
 
